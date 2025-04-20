@@ -33,3 +33,9 @@ cdk deploy
 poetry export -o requirements.txt
 # push to feature branches and develop branch will trigger pipeline run
 git push ...
+
+Cookiecutter from
+https://github.com/vino9org/cookiecutter-python-cdk-stack
+
+Good References on:
+https://github.com/ran-isenberg/cookiecutter-serverless-python

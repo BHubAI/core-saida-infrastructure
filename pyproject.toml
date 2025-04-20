@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "AWS infrastructure stack written in AWS CDK for Python"
 authors = ["Li Lin <guru.lin@gmail.com>"]
 license = "MIT"
+package-mode = false
 
 # this section contains all dependencies required to run unit and integration tests
 # not just dependencies requied for lambda runtime
@@ -32,8 +33,16 @@ pydantic = "^1.9.2"
 requests-aws4auth = "^1.1.2"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.infra.dependencies]
+bhub-cdk = "0.23.4"
+
+[[tool.poetry.source]]
+name = "bhub"
+url = "https://bhub-100154399918.d.codeartifact.us-east-1.amazonaws.com/pypi/bhub-shared/simple/"
+priority = "supplemental"
 
 [tool.poetry.dev-dependencies]
 # formatting, linting

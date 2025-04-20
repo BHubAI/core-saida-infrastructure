@@ -10,7 +10,7 @@ on:
       - 'feature**'
 
 env:
-  AWS_DEFAULT_REGION: us-west-2
+  AWS_DEFAULT_REGION: us-east-1
 
 jobs:
   set-stack-name:

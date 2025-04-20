@@ -1,56 +1,198 @@
-from os.path import abspath, dirname
-
+import aws_cdk as cdk
+import aws_cdk.aws_ec2 as ec2
+import aws_cdk.aws_ecr as ecr
+import aws_cdk.aws_ecs as ecs
+import aws_cdk.aws_iam as iam
 from aws_cdk import Stack
-from aws_cdk import aws_apigateway as apigateway
-from aws_cdk import aws_lambda as _lambda
+from aws_cdk import aws_ecs_patterns as ecs_patterns
 from aws_cdk import aws_logs as logs
-from aws_cdk import aws_sam as sam
-from aws_solutions_constructs.aws_apigateway_lambda import ApiGatewayToLambda
+from aws_cdk import aws_s3 as _s3
+from bhub_cdk.common import BusinessUnit
+from bhub_cdk.vpc import PrivateSubnets, Vpc
 from constructs import Construct
+
+from infrastructure.database import DatabaseInstance
 
 
 class CoreSaidaInfrastructure(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-    def build(self):
-        self.lamdba_with_restapi()
-        return self
+        vpc = Vpc.shared(self)
+        vpc_subnets = PrivateSubnets.select_for(self, BusinessUnit.CAAS)
 
-    def lamdba_with_restapi(self) -> ApiGatewayToLambda:
-        src_dir = abspath(dirname(abspath(__file__)) + "/../runtime")
-        return ApiGatewayToLambda(
+        repository_name = "core-saida/orchestrator"
+        repository_construct_id = f"{construct_id}ECRImageRepository"
+        try:
+            ecr_repository = ecr.Repository.from_repository_name(
+                self, repository_construct_id, repository_name=repository_name
+            )
+        except Exception:
+            ecr_repository = ecr.Repository(self, repository_construct_id, repository_name=repository_name)
+
+        cdk.aws_ssm.StringParameter(
             self,
-            f"{self.stack_name}-restapi",
-            api_gateway_props=apigateway.RestApiProps(
-                endpoint_configuration=apigateway.EndpointConfiguration(
-                    types=[apigateway.EndpointType.REGIONAL],
-                ),
+            f"{construct_id}EcrRepoArnParameter",
+            parameter_name="/core-saida/ecr-repository-uri",
+            string_value=ecr_repository.repository_uri,
+        )
+
+        self.orchestrator_application = OrchestratorApplication(
+            self,
+            "OrchestratorApp",
+            vpc=vpc,
+            vpc_subnets=vpc_subnets,
+            ecr_repository=ecr_repository,
+        )
+
+
+class OrchestratorApplication(Construct):
+    def __init__(
+        self,
+        scope: Construct,
+        construct_id: str,
+        *,
+        vpc: ec2.IVpc,
+        vpc_subnets: ec2.SubnetSelection,
+        ecr_repository: ecr.IRepository,
+    ) -> None:
+        super().__init__(scope, construct_id)
+
+        self.ecr_repository = ecr_repository
+        self.construct_id = construct_id
+        self.account_id = cdk.Stack.of(self).account
+
+        try:
+            self.dp_bucket = _s3.Bucket.from_bucket_name(
+                self,
+                "CoreSaidaDPBucket",
+                bucket_name="core-saida-dp"
+            )
+        except Exception:
+            self.dp_bucket = _s3.Bucket(
+                self,
+                "CoreSaidaDPBucket",
+                bucket_name="core-saida-dp",
+                encryption=_s3.BucketEncryption.S3_MANAGED,
+                versioned=False,
+                block_public_access=_s3.BlockPublicAccess.BLOCK_ACLS,
+                removal_policy=cdk.RemovalPolicy.RETAIN,
+            )
+
+        self.database_instance = DatabaseInstance(
+            self,
+            f"{self.construct_id}DatabaseInstance",
+            database_name="core_saida_orchestrator",
+            vpc=vpc,
+            vpc_subnets=vpc_subnets,
+        )
+
+        self.cluster = ecs.Cluster(
+            self,
+            'OrchestratorCluster',
+            vpc=vpc,
+            container_insights=True,
+            enable_fargate_capacity_providers=True
+        )
+
+        taskExecutionRole = iam.Role(
+            self,
+            'TaskExecutionRole',
+            assumed_by=iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+        )
+
+        taskExecutionRole.add_managed_policy(
+            iam.ManagedPolicy.from_aws_managed_policy_name('service-role/AmazonECSTaskExecutionRolePolicy')
+        )
+
+        taskExecutionRole.add_to_policy(
+            iam.PolicyStatement(
+                actions=[
+                    'ecr:GetAuthorizationToken',
+                    'ecr:BatchCheckLayerAvailability',
+                    'ecr:GetDownloadUrlForLayer',
+                    'ecr:BatchGetImage'
+                ],
+                resources=['*']
+            )
+        )
+
+        task_definition = ecs.FargateTaskDefinition(
+            self,
+            'OrchestratorTaskDef',
+            memory_limit_mib=512,
+            cpu=256,
+            runtime_platform=ecs.RuntimePlatform(
+                operating_system_family=ecs.OperatingSystemFamily.LINUX,
+                cpu_architecture=ecs.CpuArchitecture.X86_64,
             ),
-            lambda_function_props=_lambda.FunctionProps(
-                runtime=_lambda.Runtime.PYTHON_3_9,
-                handler="app.lambda_handler",
-                code=_lambda.Code.from_asset(src_dir),
-                layers=[self.powertools_layer("1.24.2")],
-                memory_size=512,
-                architecture=_lambda.Architecture.ARM_64,
-                log_retention=logs.RetentionDays.ONE_WEEK,
+            task_role=taskExecutionRole,
+        )
+
+        container = task_definition.add_container(
+            'OrchestratorContainer',
+            image=ecs.ContainerImage.from_ecr_repository(
+                repository=self.ecr_repository,
+                tag='latest'
             ),
-            log_group_props=logs.LogGroupProps(
-                retention=logs.RetentionDays.ONE_WEEK,
+            logging=ecs.LogDrivers.aws_logs(stream_prefix='OrchestratorApp', log_retention=logs.RetentionDays.ONE_WEEK),
+        )
+
+        container.add_port_mappings(
+            ecs.PortMapping(
+                container_port=8000,
+                host_port=8000,
             ),
         )
 
-    def powertools_layer(self, version: str) -> _lambda.ILayerVersion:
-        # Launches SAR App as CloudFormation nested stack and return Lambda Layer
-        POWERTOOLS_BASE_NAME = "AWSLambdaPowertools"
-        powertools_app = sam.CfnApplication(
+        self.orchestrator_service = ecs_patterns.ApplicationLoadBalancedFargateService(
             self,
-            f"{POWERTOOLS_BASE_NAME}Application",
-            location={
-                "applicationId": "arn:aws:serverlessrepo:eu-west-1:057560766410:applications/aws-lambda-powertools-python-layer-extras",  # noqa
-                "semanticVersion": version,
-            },
+            'OrchestratorService',
+            cluster=self.cluster,
+            task_definition=task_definition,
+            desired_count=1,
+            service_name="OrchestratorService",
+            assign_public_ip=False,
+            public_load_balancer=True,
+            listener_port=80,
+            load_balancer_name="OrchestratorLoadBalancer",
         )
-        powertools_layer_arn = powertools_app.get_att("Outputs.LayerVersionArn").to_string()
-        return _lambda.LayerVersion.from_layer_version_arn(self, f"{POWERTOOLS_BASE_NAME}", powertools_layer_arn)
+
+        self.orchestrator_service.task_definition.add_to_task_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=['secretsmanager:GetSecretValue'],
+                resources=['*'],  # place secret ARN here
+            )
+        )
+
+        scalable_target = self.orchestrator_service.service.auto_scale_task_count(
+            min_capacity=1,
+            max_capacity=2,
+        )
+
+        scalable_target.scale_on_cpu_utilization(
+            "CpuScaling",
+            target_utilization_percent=70,
+        )
+        scalable_target.scale_on_memory_utilization(
+            "MemoryScaling",
+            target_utilization_percent=80,
+        )
+
+        self.orchestrator_service.load_balancer.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
+        self.orchestrator_service.target_group.configure_health_check(
+            path='/health',
+            interval=cdk.Duration.seconds(30),
+            timeout=cdk.Duration.seconds(5),
+            enabled=True
+        )
+
+        self.secrets = {
+            "DATABASE_SECRET": self.database_instance.secret,
+        }
+
+        self.environment = {
+            "AWS_DP_BUCKET_NAME": self.dp_bucket.bucket_name,
+            "PGSQL_HOST": self.database_instance.host,
+        }
