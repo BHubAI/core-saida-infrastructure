@@ -23,11 +23,15 @@ class DatabaseInstance(Construct):
         self._instance = rds.DatabaseInstance(
             self,
             construct_id,
-            engine=rds.DatabaseInstanceEngine.postgres(version=rds.PostgresEngineVersion.VER_16_6),
+            engine=rds.DatabaseInstanceEngine.postgres(
+                version=rds.PostgresEngineVersion.VER_16_6
+            ),
             database_name=database_name,
             vpc=vpc,
             vpc_subnets=vpc_subnets,
-            instance_type=ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
+            instance_type=ec2.InstanceType.of(
+                ec2.InstanceClass.T3, ec2.InstanceSize.MICRO
+            ),
             backup_retention=Duration.days(15),
             deletion_protection=True,
             copy_tags_to_snapshot=True,

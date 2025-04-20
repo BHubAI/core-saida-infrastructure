@@ -28,7 +28,9 @@ class CoreSaidaInfrastructure(Stack):
                 self, repository_construct_id, repository_name=repository_name
             )
         except Exception:
-            ecr_repository = ecr.Repository(self, repository_construct_id, repository_name=repository_name)
+            ecr_repository = ecr.Repository(
+                self, repository_construct_id, repository_name=repository_name
+            )
 
         cdk.aws_ssm.StringParameter(
             self,
@@ -64,9 +66,7 @@ class OrchestratorApplication(Construct):
 
         try:
             self.dp_bucket = _s3.Bucket.from_bucket_name(
-                self,
-                "CoreSaidaDPBucket",
-                bucket_name="core-saida-dp"
+                self, "CoreSaidaDPBucket", bucket_name="core-saida-dp"
             )
         except Exception:
             self.dp_bucket = _s3.Bucket(
@@ -89,37 +89,39 @@ class OrchestratorApplication(Construct):
 
         self.cluster = ecs.Cluster(
             self,
-            'OrchestratorCluster',
+            "OrchestratorCluster",
             vpc=vpc,
             container_insights=True,
-            enable_fargate_capacity_providers=True
+            enable_fargate_capacity_providers=True,
         )
 
         taskExecutionRole = iam.Role(
             self,
-            'TaskExecutionRole',
-            assumed_by=iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+            "TaskExecutionRole",
+            assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
         )
 
         taskExecutionRole.add_managed_policy(
-            iam.ManagedPolicy.from_aws_managed_policy_name('service-role/AmazonECSTaskExecutionRolePolicy')
+            iam.ManagedPolicy.from_aws_managed_policy_name(
+                "service-role/AmazonECSTaskExecutionRolePolicy"
+            )
         )
 
         taskExecutionRole.add_to_policy(
             iam.PolicyStatement(
                 actions=[
-                    'ecr:GetAuthorizationToken',
-                    'ecr:BatchCheckLayerAvailability',
-                    'ecr:GetDownloadUrlForLayer',
-                    'ecr:BatchGetImage'
+                    "ecr:GetAuthorizationToken",
+                    "ecr:BatchCheckLayerAvailability",
+                    "ecr:GetDownloadUrlForLayer",
+                    "ecr:BatchGetImage",
                 ],
-                resources=['*']
+                resources=["*"],
             )
         )
 
         task_definition = ecs.FargateTaskDefinition(
             self,
-            'OrchestratorTaskDef',
+            "OrchestratorTaskDef",
             memory_limit_mib=512,
             cpu=256,
             runtime_platform=ecs.RuntimePlatform(
@@ -130,12 +132,14 @@ class OrchestratorApplication(Construct):
         )
 
         container = task_definition.add_container(
-            'OrchestratorContainer',
+            "OrchestratorContainer",
             image=ecs.ContainerImage.from_ecr_repository(
-                repository=self.ecr_repository,
-                tag='latest'
+                repository=self.ecr_repository, tag="latest"
             ),
-            logging=ecs.LogDrivers.aws_logs(stream_prefix='OrchestratorApp', log_retention=logs.RetentionDays.ONE_WEEK),
+            logging=ecs.LogDrivers.aws_logs(
+                stream_prefix="OrchestratorApp",
+                log_retention=logs.RetentionDays.ONE_WEEK,
+            ),
         )
 
         container.add_port_mappings(
@@ -147,7 +151,7 @@ class OrchestratorApplication(Construct):
 
         self.orchestrator_service = ecs_patterns.ApplicationLoadBalancedFargateService(
             self,
-            'OrchestratorService',
+            "OrchestratorService",
             cluster=self.cluster,
             task_definition=task_definition,
             desired_count=1,
@@ -161,8 +165,8 @@ class OrchestratorApplication(Construct):
         self.orchestrator_service.task_definition.add_to_task_role_policy(
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
-                actions=['secretsmanager:GetSecretValue'],
-                resources=['*'],  # place secret ARN here
+                actions=["secretsmanager:GetSecretValue"],
+                resources=["*"],  # place secret ARN here
             )
         )
 
@@ -180,12 +184,14 @@ class OrchestratorApplication(Construct):
             target_utilization_percent=80,
         )
 
-        self.orchestrator_service.load_balancer.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
+        self.orchestrator_service.load_balancer.apply_removal_policy(
+            cdk.RemovalPolicy.DESTROY
+        )
         self.orchestrator_service.target_group.configure_health_check(
-            path='/health',
+            path="/health",
             interval=cdk.Duration.seconds(30),
             timeout=cdk.Duration.seconds(5),
-            enabled=True
+            enabled=True,
         )
 
         self.secrets = {

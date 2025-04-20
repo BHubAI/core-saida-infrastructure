@@ -11,7 +11,7 @@ package-mode = false
 #
 # notes on versions of some dependencies
 #
-# the python and boto3 versions are deteremined by AWs Lambda runtime 
+# the python and boto3 versions are deteremined by AWs Lambda runtime
 # https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html
 #
 # version of pydantic is based on what's used by aws-lambda-powertools
@@ -37,7 +37,7 @@ requires = ["poetry-core>=2.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.group.infra.dependencies]
-bhub-cdk = "0.23.4"
+# bhub-cdk = "0.23.4"
 
 [[tool.poetry.source]]
 name = "bhub"
@@ -46,18 +46,11 @@ priority = "supplemental"
 
 [tool.poetry.dev-dependencies]
 # formatting, linting
-black = "^22.3.0"
-flake8 = "^4.0.1"
-flake8-black = "^0.3.3"
-flake8-builtins = "^1.5.3"
-flake8-comprehensions = "^3.10.0"
-flake8-debugger = "^4.1.2"
-flake8-fixme = "^1.1.1"
-flake8-isort = "^4.1.1"
-flake8-variables-names = "^0.0.5"
-isort = "^5.10.1"
+black = "^24.8.0"
+isort = "^5.13.2"
 pre-commit = "^2.19.0"
-mypy = "^0.961"
+mypy = "^1.11.2"
+ruff = "^0.6.4"
 types-setuptools = "^57.4.8"
 types-toml = "^0.10.3"
 boto3-stubs = "1.20.32"

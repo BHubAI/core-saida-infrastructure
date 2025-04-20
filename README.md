@@ -1,7 +1,7 @@
 
-# Welcome to your CDK Python project!
+# Core Saida Infrastructure!
 
-This project is set up like Python project using poetry package manager. 
+This project is set up like Python project using poetry package manager.
 
 The `cdk.json` file tells the CDK Toolkit how to execute your app.
 
@@ -9,7 +9,7 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 ## Setup
 ```
 # create virtualenv
-$ poetry shell
+$ poetry env activate
 
 # install dependencies
 (.venv)$ poetry install
@@ -18,9 +18,6 @@ $ poetry shell
 
 ## Develop the code for the stack
 ```
-# run unit tests
-pytest
-
 # use cdk to deploy infrastructure
 # ensure your AWS credentials are set, then
 cdk synth
@@ -28,11 +25,6 @@ cdk deploy
 
 ```
 
-## push to Github
-```
-poetry export -o requirements.txt
-# push to feature branches and develop branch will trigger pipeline run
-git push ...
 
 Cookiecutter from
 https://github.com/vino9org/cookiecutter-python-cdk-stack

@@ -1,31 +1,41 @@
-exclude: "^$|deploy|scripts|tmp"
-fail_fast: false
 repos:
-    - repo: https://github.com/pre-commit/pre-commit-hooks
-      rev: v2.4.0
-      hooks:
-          - id: check-merge-conflict
-          - id: end-of-file-fixer
-          - id: check-toml
-
-    - repo: local
-      hooks:
-          - id: black
-            name: formatting::black
-            entry: black .
-            language: system
-            types: [python]
-          - id: isort
-            name: formatting::isort
-            entry: isort
-            language: system
-            types: [python]
-
-    - repo: local
-      hooks:
-          - id: flake8
-            name: linting::flake8
-            entry: flake8
-            language: system
-            types: [python]
-
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        name: Ensure that code don't have trailing whitespace
+      - id: check-ast
+        name: Check python abstract syntax trees
+      - id: check-case-conflict
+        name: Check for case conflicts
+      - id: check-json
+        name: Check JSON files format
+      - id: check-shebang-scripts-are-executable
+        name: Check that scripts with shebangs are executable
+      - id: check-merge-conflict
+        name: Check for merge conflicts in code
+      - id: end-of-file-fixer
+        name: Files should end with empty line
+        exclude: ".json"
+      - id: double-quote-string-fixer
+        name: Strings should be single quoted
+        exclude: "^(?!helpers/)"
+      - id: debug-statements
+        name: Debug statements should be removed
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.9.1
+    hooks:
+      # Run the Ruff linter.
+      - id: ruff
+      # Run the Ruff formatter.
+      - id: ruff-format
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: "v0.1.3"
+    hooks:
+      - id: ruff
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ["--settings-path=./pyproject.toml"]
