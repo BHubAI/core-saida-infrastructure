@@ -5,6 +5,9 @@ __pycache__
 .venv
 *.egg-info
 .env*
+.envrc
+.python-version
+
 
 # test reports
 test-report/
@@ -14,9 +17,6 @@ pytest_junit.xml
 
 # mypy
 .mypy_cache/
-
-# intellj
-.idea/
 
 # AWS SAM CLI
 .aws-sam/
