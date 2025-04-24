@@ -64,20 +64,15 @@ class OrchestratorApplication(Construct):
         self.construct_id = construct_id
         self.account_id = cdk.Stack.of(self).account
 
-        try:
-            self.dp_bucket = _s3.Bucket.from_bucket_name(
-                self, "CoreSaidaDPBucket", bucket_name="core-saida-dp"
-            )
-        except Exception:
-            self.dp_bucket = _s3.Bucket(
-                self,
-                "CoreSaidaDPBucket",
-                bucket_name="core-saida-dp",
-                encryption=_s3.BucketEncryption.S3_MANAGED,
-                versioned=False,
-                block_public_access=_s3.BlockPublicAccess.BLOCK_ACLS,
-                removal_policy=cdk.RemovalPolicy.RETAIN,
-            )
+        self.dp_bucket = _s3.Bucket(
+            self,
+            "CoreSaidaBucket",
+            bucket_name="core-saida",
+            encryption=_s3.BucketEncryption.S3_MANAGED,
+            versioned=False,
+            block_public_access=_s3.BlockPublicAccess.BLOCK_ACLS,
+            removal_policy=cdk.RemovalPolicy.RETAIN,
+        )
 
         self.database_instance = DatabaseInstance(
             self,
@@ -116,6 +111,22 @@ class OrchestratorApplication(Construct):
                     "ecr:BatchGetImage",
                 ],
                 resources=["*"],
+            )
+        )
+
+        taskExecutionRole.add_to_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["secretsmanager:GetSecretValue"],
+                resources=[self.database_instance.secret.secret_arn],
+            )
+        )
+
+        taskExecutionRole.add_to_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["s3:*"],
+                resources=[self.dp_bucket.bucket_arn, f"{self.dp_bucket.bucket_arn}/*"],
             )
         )
 
@@ -166,7 +177,7 @@ class OrchestratorApplication(Construct):
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
                 actions=["secretsmanager:GetSecretValue"],
-                resources=["*"],  # place secret ARN here
+                resources=[self.database_instance.secret.secret_arn],
             )
         )
 
@@ -187,6 +198,7 @@ class OrchestratorApplication(Construct):
         self.orchestrator_service.load_balancer.apply_removal_policy(
             cdk.RemovalPolicy.DESTROY
         )
+
         self.orchestrator_service.target_group.configure_health_check(
             path="/health",
             interval=cdk.Duration.seconds(30),
