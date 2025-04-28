@@ -130,6 +130,15 @@ class OrchestratorApplication(Construct):
             )
         )
 
+        # Add specific secret access permission
+        taskExecutionRole.add_to_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["secretsmanager:GetSecretValue"],
+                resources=[f"arn:aws:secretsmanager:{cdk.Stack.of(self).region}:{cdk.Stack.of(self).account}:secret:OrchestratorAppOrchestrator-*"],
+            )
+        )
+
         task_definition = ecs.FargateTaskDefinition(
             self,
             "OrchestratorTaskDef",
