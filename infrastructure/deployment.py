@@ -13,7 +13,6 @@ env = cdk.Environment(
     region=os.environ.get(
         "CDK_DEFAULT_REGION", os.environ.get("AWS_REGION", "us-east-1")
     ),
-    # is_prod=app.node.try_get_context("profile") == "core-team-saida-prod"
 )
 
 CoreSaidaInfrastructure(app, stack_name, env=env)

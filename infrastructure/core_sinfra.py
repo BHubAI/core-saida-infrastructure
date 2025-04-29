@@ -92,7 +92,7 @@ class OrchestratorApplication(Construct):
         self.dp_bucket = _s3.Bucket(
             self,
             "CoreSaidaBucket",
-            bucket_name="core-saida",
+            bucket_name="core-team-saida",
             encryption=_s3.BucketEncryption.S3_MANAGED,
             versioned=False,
             block_public_access=_s3.BlockPublicAccess.BLOCK_ACLS,
@@ -142,14 +142,6 @@ class OrchestratorApplication(Construct):
         taskExecutionRole.add_to_policy(
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
-                actions=["secretsmanager:GetSecretValue"],
-                resources=[self.database_instance.secret.secret_arn],
-            )
-        )
-
-        taskExecutionRole.add_to_policy(
-            iam.PolicyStatement(
-                effect=iam.Effect.ALLOW,
                 actions=["s3:*"],
                 resources=[self.dp_bucket.bucket_arn, f"{self.dp_bucket.bucket_arn}/*"],
             )
@@ -160,7 +152,9 @@ class OrchestratorApplication(Construct):
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
                 actions=["secretsmanager:GetSecretValue"],
-                resources=[f"arn:aws:secretsmanager:{cdk.Stack.of(self).region}:{cdk.Stack.of(self).account}:secret:OrchestratorAppOrchestrator-*"],
+                resources=[
+                    f"arn:aws:secretsmanager:{cdk.Stack.of(self).region}:{cdk.Stack.of(self).account}:secret:OrchestratorAppOrchestrator-*"
+                ],
             )
         )
 
@@ -216,8 +210,8 @@ class OrchestratorApplication(Construct):
         )
 
         scalable_target = self.orchestrator_service.service.auto_scale_task_count(
-            min_capacity=1,
-            max_capacity=2,
+            min_capacity=2,
+            max_capacity=4,
         )
 
         scalable_target.scale_on_cpu_utilization(
