@@ -3,6 +3,7 @@ import aws_cdk.aws_ec2 as ec2
 import aws_cdk.aws_ecr as ecr
 import aws_cdk.aws_ecs as ecs
 import aws_cdk.aws_iam as iam
+import aws_cdk.aws_route53 as route53
 from aws_cdk import Stack
 from aws_cdk import aws_ecs_patterns as ecs_patterns
 from aws_cdk import aws_logs as logs
