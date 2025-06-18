@@ -66,6 +66,6 @@ types-awscrt==0.26.1
 types-setuptools==57.4.18
 types-toml==0.10.8.20240310
 typing_extensions==4.13.2
-urllib3==1.26.20
+urllib3==2.5.0
 virtualenv==20.30.0
 wrapt==1.17.2
